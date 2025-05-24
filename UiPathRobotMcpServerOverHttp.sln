@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35931.197 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UiPathRobotMcpServerOverHttp", "UiPathRobotMcpServerOverHttp\UiPathRobotMcpServerOverHttp.csproj", "{AFDEF685-1F27-4893-959D-DFA3CB574801}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AFDEF685-1F27-4893-959D-DFA3CB574801}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AFDEF685-1F27-4893-959D-DFA3CB574801}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AFDEF685-1F27-4893-959D-DFA3CB574801}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AFDEF685-1F27-4893-959D-DFA3CB574801}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2B7A3584-0C27-4ED4-B41B-F60C741175CF}
+	EndGlobalSection
+EndGlobal

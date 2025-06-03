@@ -2,8 +2,6 @@
 using ModelContextProtocol.Server;
 using System.ComponentModel;
 using UiPath.Robot.Api;
-using PTST.UiPath.Orchestrator.API;
-using PTST.UiPath.Orchestrator.Models;
 using System.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -25,9 +23,12 @@ public sealed class UiPathRobotTool
         var processes =  await client.GetProcesses();
         if( processes == null || processes.Count == 0)
         {
+            return "No processes were found.";
         }
         else
         {
+            return JsonConvert.SerializeObject(JArray.FromObject(
+                processes.Select(p => new { Name = p.Name, Description = p.Description, Key = p.Key })));
         }
 
     }
@@ -60,13 +61,12 @@ public sealed class UiPathRobotTool
         {
             param_schema.Properties.Add(arg.Name, new JSchema { Type = _GetJsonSchemaType( arg.Type) });
             if( arg.IsRequired)
-        {
+            {
                 param_schema.Required.Add(arg.Name);
-        }   
-    }
+            }   
+        }
 
         return param_schema.ToString();
-
     }
 
 
@@ -79,7 +79,6 @@ public sealed class UiPathRobotTool
 #if DEBUG
         //Debugger.Launch();
 #endif
-        var helper = RobotHelper.getRobotHelper();
         var process = client.GetProcesses().Result.Where( p => p.Key.ToString() == processKey).FirstOrDefault();
         if( process == null)
         {

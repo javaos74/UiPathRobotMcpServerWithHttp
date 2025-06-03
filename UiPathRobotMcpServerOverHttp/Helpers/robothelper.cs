@@ -64,6 +64,11 @@ public class RobotHelper
 
     }
 
+    public RobotClient getRobotClient()
+    {
+        return _robotClient;
+    }
+
     public string ConvertToParameter(string inputArguments)
     {
         Dictionary<string, object> result = new Dictionary<string, object>();

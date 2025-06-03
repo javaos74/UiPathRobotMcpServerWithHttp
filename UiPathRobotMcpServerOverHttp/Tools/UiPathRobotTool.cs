@@ -1,6 +1,10 @@
-﻿using ModelContextProtocol.Server;
+﻿using Microsoft.VisualBasic;
+using ModelContextProtocol.Server;
 using System.ComponentModel;
 using UiPath.Robot.Api;
+using PTST.UiPath.Orchestrator.API;
+using PTST.UiPath.Orchestrator.Models;
+using System.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Schema;
@@ -21,20 +25,17 @@ public sealed class UiPathRobotTool
         var processes =  await client.GetProcesses();
         if( processes == null || processes.Count == 0)
         {
-            return "No processes were found.";
         }
         else
         {
-            return JsonConvert.SerializeObject(JArray.FromObject(
-                processes.Select( p => new { Name = p.Name, Description = p.Description, Key = p.Key})));
         }
 
     }
 
-    [McpServerTool, Description("Get specific process input argument for invocation")]
+    [McpServerTool, Description("Get specific process input argument for invocation")] 
     public static string GetProcessInputParameter(
-       RobotClient client,
-       [Description("Process Key to get process input argument")] string processKey)
+        RobotClient client,
+        [Description("Process Key to get process input argument")] string processKey)   
     {
         /* expected json schema for input arguments
         {
@@ -59,13 +60,13 @@ public sealed class UiPathRobotTool
         {
             param_schema.Properties.Add(arg.Name, new JSchema { Type = _GetJsonSchemaType( arg.Type) });
             if( arg.IsRequired)
-            {
+        {
                 param_schema.Required.Add(arg.Name);
-            }
-        }
-        
+        }   
+    }
+
         return param_schema.ToString();
-        
+
     }
 
 
@@ -78,6 +79,7 @@ public sealed class UiPathRobotTool
 #if DEBUG
         //Debugger.Launch();
 #endif
+        var helper = RobotHelper.getRobotHelper();
         var process = client.GetProcesses().Result.Where( p => p.Key.ToString() == processKey).FirstOrDefault();
         if( process == null)
         {
@@ -112,7 +114,7 @@ public sealed class UiPathRobotTool
             return JsonConvert.SerializeObject(result.Arguments);
         }
     }
-
+   
     private static JSchemaType? _GetJsonSchemaType(string? val)
     {
         string? _type = val?.Split(',')[0];

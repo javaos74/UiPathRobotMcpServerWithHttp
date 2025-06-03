@@ -13,9 +13,10 @@ public class RobotHelper
     private IEnumerable<Folder>? _folders;   
     public RobotHelper() 
     {
-        Env.Load(AppDomain.CurrentDomain.BaseDirectory + ".env");
+        //Env.Load(AppDomain.CurrentDomain.BaseDirectory + ".env");
         // Constructor logic here
-        _robotClient = new RobotClient();
+        //_robotClient = new RobotClient();
+        /*
         _orch = new Orchestrator( Env.GetString("UIPATH_ENDPOINT"),
             Env.GetString("UIPATH_APPID"),
             Env.GetString("UIPATH_APPSECRET"),
@@ -29,6 +30,7 @@ public class RobotHelper
         {
             _folders = _orch.GetAll<Folder>().Result.Where(f => f.DisplayName == "Shared");
         }
+        */
     }
 
     public Release? findProcessWithKey(string processKey)
@@ -88,6 +90,27 @@ public class RobotHelper
         return JsonConvert.SerializeObject(result);
     }
 
+    public string ConvertToParameter2(string inputArguments)
+    {
+        Dictionary<string, object> result = new Dictionary<string, object>();
+        Dictionary<string, object> properties = new Dictionary<string, object>();
+        result.Add("type", "object");
+        List<string> required = new List<string>();
+
+        JArray jarr = JArray.Parse(inputArguments);
+        foreach (var jobj in jarr)
+        {
+            properties.Add(jobj["Name"]!.ToString(), new Dictionary<string, string>() { { "type", _GetTypeName(jobj["Type"]?.ToString()) } });
+            if (jobj["IsRequired"]?.ToString().ToLower() == "true")
+            {
+                required.Add(jobj["Name"]!.ToString());
+            }
+        }
+        result.Add("properties", properties);
+        result.Add("required", required);
+        return JsonConvert.SerializeObject(result);
+    }
+
     public string _GetTypeName(string? val) {
         string? _type= val?.Split(',')[0];
         switch (_type)
@@ -99,6 +122,8 @@ public class RobotHelper
             case "System.UInt64":
             case "System.Int32":
             case "System.UInt32":
+                _type = "integer";
+                break;
             case "System.Single":
             case "System.Double":
                 _type = "number";

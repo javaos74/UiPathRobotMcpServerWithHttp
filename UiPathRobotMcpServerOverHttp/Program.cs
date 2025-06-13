@@ -1,20 +1,19 @@
-using Microsoft.Extensions.Configuration.Memory;
+
 using UiPath.Robot.Api;
-using UiPath.Robot.MCP.Tools;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+using UiPathRobotMcpServerOverHttp.Helpers;
 
+var tool = new UiPathRobotToolHandler();
+//HashSet<string> subscriptions = [];
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddMcpServer()
+var mcpserverbuider = builder.Services.AddMcpServer()
     .WithHttpTransport()
-    .WithTools<UiPathRobotTool>();
+    .WithListToolsHandler(tool.UiPathRobotListHandler)
+    .WithCallToolHandler(tool.UiPathRobotToolCallHandler);
 
-builder.Services.AddSingleton<RobotClient>(sp =>
-{
-    var client = new RobotClient();
-    return client;
-});
-
+/*
+builder.Services.AddSingleton(subscriptions);
+builder.Services.AddHostedService<SubscriptionMessageSender>();
+*/
 var app = builder.Build();
 
 app.MapMcp();

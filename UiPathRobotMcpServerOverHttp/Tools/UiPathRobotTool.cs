@@ -6,6 +6,7 @@ using System.Diagnostics;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Schema;
+using UiPathRobotMcpServerOverHttp.Helpers;
 
 namespace UiPath.Robot.MCP.Tools;
 
@@ -59,7 +60,7 @@ public sealed class UiPathRobotTool
         var result = client.InstallProcess(new InstallProcessParameters(processKey)).Result;
         foreach( var arg in result.InputArgumentsSchema)
         {
-            param_schema.Properties.Add(arg.Name, new JSchema { Type = _GetJsonSchemaType( arg.Type) });
+            param_schema.Properties.Add(arg.Name, new JSchema { Type = Utils.GetJsonSchemaType( arg.Type) });
             if( arg.IsRequired)
             {
                 param_schema.Required.Add(arg.Name);
@@ -114,40 +115,5 @@ public sealed class UiPathRobotTool
         }
     }
    
-    private static JSchemaType? _GetJsonSchemaType(string? val)
-    {
-        string? _type = val?.Split(',')[0];
-        JSchemaType? jtype = JSchemaType.None;
-        switch (_type)
-        {
-            case "System.String":
-            case "System.DateTime":
-            case "System.Guid":
-                jtype = JSchemaType.String;
-                break;
-            case "System.Int64":
-            case "System.UInt64":
-            case "System.Int32":
-            case "System.UInt32":
-            case "System.Int16":
-            case "System.UInt16":
-            case "System.Byte":
-                jtype = JSchemaType.Integer;
-                break;
-            case "System.Single":
-            case "System.Double":
-                jtype = JSchemaType.Number;
-                break;
-            case "System.Boolean":
-                jtype = JSchemaType.Boolean;
-                break;
-            case "System.Object":
-                jtype = JSchemaType.Object; 
-                break;
-            case "System.Array":
-                jtype = JSchemaType.Array;
-                break;
-        }
-        return jtype;
-    }
+    
 }

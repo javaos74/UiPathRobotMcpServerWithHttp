@@ -127,7 +127,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                         ProgressToken = progressToken
                     });
                 }
-                await Task.Delay(3000); // 3초 대기
+                await Task.Delay(5000); // 5초 대기
             }
         }
 
@@ -154,12 +154,11 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                         break;
                     case JsonValueKind.Number:
                         Decimal dec;
-                        Double dbl;
-                        v.TryGetDecimal(out dec);
-                        if (v.TryGetDecimal(out dec))
+                        long lng;
+                        if( v.TryGetInt64( out lng))
+                            job.InputArguments[k] = lng;
+                        else if (v.TryGetDecimal(out dec))
                             job.InputArguments[k] = dec;
-                        else if (v.TryGetDouble(out dbl))
-                            job.InputArguments[k] = dbl;
                         break;
 //                    case JsonValueKind.Object:
 //                        job.InputArguments[k] = v.Deserialize( ;
@@ -181,10 +180,49 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                 var progressTask = reportProgress(request.Server, progressToken, jobTask);   
                 Task.WaitAll(jobTask, progressTask); // Wait for both job and progress reporting to complete
 
-                var call_resp = new CallToolResponse()
-                {
-                    Content = [new Content() { Text = JsonSerializer.Serialize(jobTask.Result.Arguments), Type = "text" }]
+                var call_resp = new CallToolResponse() {
+                    IsError = false,
+                    Content = [new Content() { Text = $"Job finished successfully", Type = "text" }],
                 };
+                foreach( var k in jobTask.Result.Arguments.Keys)
+                {
+                    object value = jobTask.Result.Arguments[k];
+                    TypeCode code = Type.GetTypeCode(value.GetType());
+
+                    switch (code)
+                    {
+                        case TypeCode.Int16:
+                        case TypeCode.Int32:
+                        case TypeCode.Int64:
+                        case TypeCode.UInt16:
+                        case TypeCode.UInt32:
+                        case TypeCode.UInt64:
+                        case TypeCode.Byte:
+                        case TypeCode.SByte:
+                            call_resp.Content.Add(new Content() { Text = $"{k}: {jobTask.Result.Arguments[k]}", Type = "text" });
+                            break;
+                        case TypeCode.Boolean:
+                            call_resp.Content.Add(new Content() { Text = $"{k}: {jobTask.Result.Arguments[k]}", Type = "text" });
+                            break;
+                        case TypeCode.String:
+                            call_resp.Content.Add(new Content() { Text = $"{k}: {jobTask.Result.Arguments[k]}", Type = "text" });
+                            break;
+                        case TypeCode.DateTime:
+                            call_resp.Content.Add(new Content() { Text = $"{k}: {jobTask.Result.Arguments[k]}", Type = "text" });
+                            break;
+                        default:
+                            call_resp.Content.Add(new Content() { Text = $"{k}: {jobTask.Result.Arguments[k]}", Type = "text" });
+                            break;
+                    }
+
+                };
+#if DEBUG
+                //Console.WriteLine( $"{JsonSerializer.Serialize(jobTask.Result.Arguments)}");
+                //foreach( var k in jobTask.Result.Arguments.Keys)
+                //{
+                //    Console.WriteLine($"{k}: {jobTask.Result.Arguments[k]}");
+                //}
+#endif
                 return await ValueTask.FromResult(call_resp);
             }
             catch (Exception e) 
@@ -192,6 +230,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                 Console.WriteLine(e.Message);
                 return await ValueTask.FromResult(new CallToolResponse()
                 {
+                    IsError = true,
                     Content = [new Content() { Text = e.Message, Type = "text" }]
                 });
             }            

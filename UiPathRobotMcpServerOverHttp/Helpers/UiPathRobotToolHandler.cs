@@ -1,4 +1,5 @@
-﻿using ModelContextProtocol.Protocol;
+﻿using ModelContextProtocol;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using System.Diagnostics.Metrics;
 using System.Text.Json;
@@ -111,9 +112,29 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
             }
         }
 
+        public async Task reportProgress( IMcpServer? server, ProgressToken? progressToken, Task task)
+        {
+            int progress = 0;
+            int total = 100;
+            while (!task.IsCompleted)
+            {
+                if (server != null)
+                {
+                    await server.SendNotificationAsync("notifications/progress", new
+                    {
+                        Progress = progress < 99 ? progress++ : 99,
+                        Total = total,
+                        ProgressToken = progressToken
+                    });
+                }
+                await Task.Delay(3000); // 3초 대기
+            }
+        }
+
         public async ValueTask<CallToolResponse> UiPathRobotToolCallHandler(RequestContext<CallToolRequestParams> request, CancellationToken token)
         {
-            var process = client.GetProcesses().Result.Where(p => p.Name == request.Params!.Name).FirstOrDefault();
+            var progressToken = request.Params?.Meta?.ProgressToken;
+            var process = client.GetProcesses().Result.Where(p => p.Name == request.Params?.Name).FirstOrDefault();
             if (process == null)
             {
                 return await ValueTask.FromResult(new CallToolResponse()
@@ -123,7 +144,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
             }
             var job = process.ToJob();
 
-            foreach (var k in request.Params.Arguments?.Keys)
+            foreach (var k in request.Params?.Arguments?.Keys)
             {
                 var v = (JsonElement)request.Params.Arguments[k];
                 switch (v.ValueKind)
@@ -156,10 +177,13 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
             }
             try
             {
-                var result = client.RunJob(job).Result;
+                var jobTask = client.RunJob(job);
+                var progressTask = reportProgress(request.Server, progressToken, jobTask);   
+                Task.WaitAll(jobTask, progressTask); // Wait for both job and progress reporting to complete
+
                 var call_resp = new CallToolResponse()
                 {
-                    Content = [new Content() { Text = JsonSerializer.Serialize(result.Arguments), Type = "text" }]
+                    Content = [new Content() { Text = JsonSerializer.Serialize(jobTask.Result.Arguments), Type = "text" }]
                 };
                 return await ValueTask.FromResult(call_resp);
             }

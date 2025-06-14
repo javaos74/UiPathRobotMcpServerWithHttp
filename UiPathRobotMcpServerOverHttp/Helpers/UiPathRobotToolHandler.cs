@@ -16,6 +16,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
 
         private CancellationTokenSource? _cancellationTokenSource;
         private Task? _workerTask;
+        private IMcpServer? _server;
 
 
         private void Start(int intervalseconds)
@@ -73,7 +74,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
             }
         }
 
-        public UiPathRobotToolHandler(int intervalseconds = 60*5)
+        public UiPathRobotToolHandler(int intervalseconds = 60*5) // default 5 minutes
         {
             Start(intervalseconds);
         }
@@ -93,6 +94,8 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                         Description = p.Description,
                         InputSchema = Utils.GetInputParamv2(client, p.Key)
                     }).ToList();
+                if( _server != null)
+                    _server.SendNotificationAsync("notifications/tools/list_changed").Wait();
             }
             finally
             {
@@ -104,6 +107,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
             _lock.EnterReadLock(); // 읽기 락 획득
             try
             {
+                _server = request.Server; // 서버 인스턴스 저장
                 return await ValueTask.FromResult(toollist);
             }
             finally
@@ -112,7 +116,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
             }
         }
 
-        public async Task reportProgress( IMcpServer? server, ProgressToken? progressToken, Task task)
+        private async Task reportProgress( IMcpServer? server, ProgressToken? progressToken, Task task)
         {
             int progress = 0;
             int total = 100;
@@ -186,8 +190,8 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                 };
                 foreach( var k in jobTask.Result.Arguments.Keys)
                 {
-                    object value = jobTask.Result.Arguments[k];
-                    TypeCode code = Type.GetTypeCode(value.GetType());
+                    object? value = jobTask.Result.Arguments[k];
+                    TypeCode code = Type.GetTypeCode(value?.GetType());
 
                     switch (code)
                     {
@@ -199,6 +203,9 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                         case TypeCode.UInt64:
                         case TypeCode.Byte:
                         case TypeCode.SByte:
+                        case TypeCode.Single:
+                        case TypeCode.Double:
+                        case TypeCode.Decimal:
                             call_resp.Content.Add(new Content() { Text = $"{k}: {jobTask.Result.Arguments[k]}", Type = "text" });
                             break;
                         case TypeCode.Boolean:

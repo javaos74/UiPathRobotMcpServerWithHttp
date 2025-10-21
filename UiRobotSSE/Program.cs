@@ -27,5 +27,5 @@ var app = builder.Build();
 
 app.MapMcp();
 
-//app.UsePathBase("/sse");
+app.UsePathBase("/sse");
 app.Run("http://127.0.0.1:3002");

@@ -14,19 +14,46 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                 var result = client.InstallProcess(new InstallProcessParameters(key)).Result;
                 JSchema param_schema = new JSchema();
                 param_schema.Type = JSchemaType.Object;
+                
+                // 프로퍼티가 없는 경우에도 유효한 스키마 생성
+                if (result.InputArgumentsSchema == null || !result.InputArgumentsSchema.Any())
+                {
+                    // 빈 객체 스키마 반환
+                    var emptySchema = new
+                    {
+                        type = "object",
+                        properties = new { },
+                        required = new string[0]
+                    };
+                    return JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(emptySchema));
+                }
+                
                 foreach (var arg in result.InputArgumentsSchema)
                 {
-                    param_schema.Properties.Add(arg.Name, new JSchema { Type = Utils.GetJsonSchemaType(arg.Type) });
-                    if (arg.IsRequired)
+                    var schemaType = Utils.GetJsonSchemaType(arg.Type);
+                    if (schemaType != null && schemaType != JSchemaType.None)
                     {
-                        param_schema.Required.Add(arg.Name);
+                        param_schema.Properties.Add(arg.Name, new JSchema { Type = schemaType });
+                        if (arg.IsRequired)
+                        {
+                            param_schema.Required.Add(arg.Name);
+                        }
                     }
                 }
-                return JsonSerializer.Deserialize<JsonElement>(param_schema.ToString());
+                
+                var schemaJson = param_schema.ToString();
+                return JsonSerializer.Deserialize<JsonElement>(schemaJson);
             }
             catch (Exception ex)
             {
-                return JsonSerializer.Deserialize<JsonElement>("{}");
+                // MCP 0.4.0 호환 기본 스키마 반환
+                var defaultSchema = new
+                {
+                    type = "object",
+                    properties = new { },
+                    required = new string[0]
+                };
+                return JsonSerializer.Deserialize<JsonElement>(JsonSerializer.Serialize(defaultSchema));
             }
         }
         public static JsonElement GetInputParam( InstallProcessResult result)
@@ -45,8 +72,12 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
         }
         public static JSchemaType? GetJsonSchemaType(string? val)
         {
-            string? _type = val?.Split(',')[0];
-            JSchemaType? jtype = JSchemaType.None;
+            if (string.IsNullOrEmpty(val))
+                return JSchemaType.String; // 기본값으로 string 반환
+                
+            string? _type = val.Split(',')[0];
+            JSchemaType jtype = JSchemaType.String; // 기본값 설정
+            
             switch (_type)
             {
                 case "System.String":
@@ -65,6 +96,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                     break;
                 case "System.Single":
                 case "System.Double":
+                case "System.Decimal":
                     jtype = JSchemaType.Number;
                     break;
                 case "System.Boolean":
@@ -75,6 +107,10 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                     break;
                 case "System.Array":
                     jtype = JSchemaType.Array;
+                    break;
+                default:
+                    // 알 수 없는 타입은 string으로 처리
+                    jtype = JSchemaType.String;
                     break;
             }
             return jtype;

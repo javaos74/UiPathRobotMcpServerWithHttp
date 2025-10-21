@@ -364,3 +364,6 @@ FodyWeavers.xsd
 
 # dotenv 
 .env
+
+# Embedded git repositories
+csharp-sdk/

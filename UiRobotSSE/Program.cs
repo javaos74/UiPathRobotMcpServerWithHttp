@@ -1,14 +1,23 @@
 
 using UiPath.Robot.Api;
 using UiPathRobotMcpServerOverHttp.Helpers;
+using ModelContextProtocol.Protocol;
 
 var tool = new UiPathRobotToolHandler();
 //HashSet<string> subscriptions = [];
 var builder = WebApplication.CreateBuilder(args);
 var mcpserverbuider = builder.Services.AddMcpServer()
     .WithHttpTransport()
-    .WithListToolsHandler(tool.UiPathRobotListHandler)
-    .WithCallToolHandler(tool.UiPathRobotToolCallHandler);
+    .WithListToolsHandler(async (request, token) => 
+    {
+        tool.SetServer(request.Server);
+        return await tool.UiPathRobotListHandler(request.Params!, token);
+    })
+    .WithCallToolHandler(async (request, token) => 
+    {
+        tool.SetServer(request.Server);
+        return await tool.UiPathRobotToolCallHandler(request.Params!, token);
+    });
 
 /*
 builder.Services.AddSingleton(subscriptions);
@@ -19,4 +28,4 @@ var app = builder.Build();
 app.MapMcp();
 
 //app.UsePathBase("/sse");
-app.Run("http://127.0.0.1:3001");
+app.Run("http://127.0.0.1:3002");

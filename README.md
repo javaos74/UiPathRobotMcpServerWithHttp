@@ -144,8 +144,8 @@ cd UiRobotSSE
 dotnet run
 ```
 
-The server will start on `http://127.0.0.1:3002/sse` by default.
-서버는 기본적으로 `http://127.0.0.1:3002/sse `에서 시작됩니다.
+The server will start on `http://0.0.0.0:3002/sse` by default.
+서버는 기본적으로 `http://0.0.0.0:3002/sse`에서 시작됩니다.
 
 ### Production Mode / 프로덕션 모드
 
@@ -154,6 +154,42 @@ cd UiRobotSSE
 dotnet build --configuration Release
 dotnet run --configuration Release
 ```
+
+### Changing Server Port / 서버 포트 변경
+
+You can change the server port and host using either configuration file or command-line arguments:
+설정 파일 또는 명령줄 인수를 사용하여 서버 포트와 호스트를 변경할 수 있습니다:
+
+#### Option 1: Using appsettings.json / appsettings.json 사용
+
+Edit `UiRobotSSE/appsettings.json`:
+`UiRobotSSE/appsettings.json` 편집:
+
+```json
+{
+  "ServerSettings": {
+    "Host": "0.0.0.0",
+    "Port": 3002
+  }
+}
+```
+
+#### Option 2: Using Command-Line Arguments / 명령줄 인수 사용
+
+```bash
+# Change port only / 포트만 변경
+dotnet run -- --port 8080
+
+# Change both host and port / 호스트와 포트 모두 변경
+dotnet run -- --host 127.0.0.1 --port 8080
+
+# For portable executable / portable 실행 파일의 경우
+./UiRobotSSE --port 8080
+./UiRobotSSE --host 127.0.0.1 --port 8080
+```
+
+Command-line arguments take precedence over configuration file settings.
+명령줄 인수가 설정 파일보다 우선합니다.
 
 ## Testing with MCP Inspector / MCP Inspector로 테스트
 
@@ -180,16 +216,30 @@ cd UiRobotSSE
 dotnet run
 ```
 
-The server should be running on `http://127.0.0.1:3002/sse`
-서버가 `http://127.0.0.1:3002/sse`에서 실행되어야 합니다
+By default, the server runs on `http://0.0.0.0:3002/sse`. You can change the host and port:
+기본적으로 서버는 `http://0.0.0.0:3002/sse`에서 실행됩니다. 호스트와 포트를 변경할 수 있습니다:
+
+```bash
+# Use custom port / 사용자 지정 포트 사용
+dotnet run -- --port 8080
+
+# Use custom host and port / 사용자 지정 호스트와 포트 사용
+dotnet run -- --host 127.0.0.1 --port 8080
+```
+
+Or configure in `appsettings.json` (see [Changing Server Port](#changing-server-port-서버-포트-변경) section).
+또는 `appsettings.json`에서 설정할 수 있습니다 ([서버 포트 변경](#changing-server-port-서버-포트-변경) 섹션 참조).
 
 ### 3. Connect MCP Inspector / MCP Inspector 연결
 
 #### Option A: Direct HTTP Connection / 직접 HTTP 연결
 
 ```bash
-# Connect to the HTTP endpoint
-npx @modelcontextprotocol/inspector http://127.0.0.1:3002/sse
+# Connect to the default endpoint / 기본 엔드포인트에 연결
+npx @modelcontextprotocol/inspector http://0.0.0.0:3002/sse
+
+# Or if you changed the host/port / 또는 호스트/포트를 변경한 경우
+npx @modelcontextprotocol/inspector http://127.0.0.1:8080/sse
 ```
 
 #### Option B: Process Connection / 프로세스 연결
@@ -262,11 +312,12 @@ Verification:
 
 #### Connection Issues / 연결 문제
 ```bash
-# Check if server is running
-curl http://127.0.0.1:3002/sse
+# Check if server is running (use your configured host:port)
+# 서버가 실행 중인지 확인 (설정된 host:port 사용)
+curl http://0.0.0.0:3002/sse
 
 # Verify MCP endpoint
-curl -X POST http://127.0.0.1:3002/sse \
+curl -X POST http://0.0.0.0:3002/sse \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
 ```
@@ -291,7 +342,8 @@ For automated testing, you can use the MCP Inspector programmatically:
 const inspector = require('@modelcontextprotocol/inspector');
 
 async function testToolDiscovery() {
-  const client = await inspector.connect('http://127.0.0.1:3002/sse');
+  // Use your configured server URL / 설정된 서버 URL 사용
+  const client = await inspector.connect('http://0.0.0.0:3002/sse');
   const tools = await client.listTools();
   console.log(`Found ${tools.length} tools`);
   
@@ -327,7 +379,8 @@ MCP 구성에 다음을 추가하세요:
 Connect to the HTTP transport endpoint:
 HTTP 전송 엔드포인트에 연결하세요:
 
-- **URL**: `http://127.0.0.1:3002/sse`
+- **URL**: `http://0.0.0.0:3002/sse` (default, configurable via appsettings.json or command-line)
+- **URL**: `http://0.0.0.0:3002/sse` (기본값, appsettings.json 또는 명령줄로 설정 가능)
 - **Transport**: HTTP
 - **Protocol**: MCP 0.4.0-preview.3
 
@@ -373,16 +426,77 @@ The tools available depend on the UiPath processes visible in your UiPath Assist
 >
 > **참고**: 도구 이름과 설명은 UiPath 프로세스에서 직접 가져옵니다. 자동화를 개발할 때 설명적인 이름과 자세한 설명을 사용하여 AI 상호작용을 개선하세요.
 
-## Configuration / 구성
+## Building Portable Binaries / Portable 바이너리 빌드
 
-### Port Configuration / 포트 구성
+You can build self-contained portable executables that don't require .NET runtime installation on the target machine.
+대상 컴퓨터에 .NET 런타임 설치가 필요 없는 독립 실행형 portable 실행 파일을 빌드할 수 있습니다.
 
-To change the default port, modify `Program.cs`:
-기본 포트를 변경하려면 `Program.cs`를 수정하세요:
+### Windows x64 Build / Windows x64 빌드
 
-```csharp
-app.Run("http://127.0.0.1:YOUR_PORT");
+```bash
+# Using build script / 빌드 스크립트 사용
+./build-win-x64.sh
+
+# Or manually / 또는 수동으로
+dotnet publish UiRobotSSE/UiRobotSSE.csproj \
+    -c Release \
+    -r win-x64 \
+    --self-contained true \
+    -p:PublishSingleFile=true \
+    -p:IncludeNativeLibrariesForSelfExtract=true \
+    -o ./publish-win-x64
 ```
+
+Output: `UiRobotSSE-portable-win-x64.zip` (~40-80MB)
+출력: `UiRobotSSE-portable-win-x64.zip` (~40-80MB)
+
+### macOS ARM64 Build (Apple Silicon) / macOS ARM64 빌드 (Apple Silicon)
+
+```bash
+# Using build script / 빌드 스크립트 사용
+./build-osx-arm64.sh
+
+# Or manually / 또는 수동으로
+dotnet publish UiRobotSSE/UiRobotSSE.csproj \
+    -c Release \
+    -r osx-arm64 \
+    --self-contained true \
+    -p:PublishSingleFile=true \
+    -p:IncludeNativeLibrariesForSelfExtract=true \
+    -o ./publish-osx-arm64
+```
+
+Output: `UiRobotSSE-portable-osx-arm64.zip` (~40-80MB)
+출력: `UiRobotSSE-portable-osx-arm64.zip` (~40-80MB)
+
+### Deployment / 배포
+
+1. Extract the zip file on the target machine / 대상 컴퓨터에서 zip 파일 압축 해제
+2. Run the executable directly / 실행 파일 직접 실행:
+   - Windows: `UiRobotSSE.exe`
+   - macOS: `./UiRobotSSE`
+3. No .NET runtime installation required / .NET 런타임 설치 불필요
+
+### Other Platforms / 다른 플랫폼
+
+For other platforms, use the appropriate runtime identifier (RID):
+다른 플랫폼의 경우 적절한 런타임 식별자(RID)를 사용하세요:
+
+```bash
+# Linux x64
+dotnet publish -r linux-x64 --self-contained true -p:PublishSingleFile=true
+
+# Windows ARM64
+dotnet publish -r win-arm64 --self-contained true -p:PublishSingleFile=true
+
+# macOS x64 (Intel)
+dotnet publish -r osx-x64 --self-contained true -p:PublishSingleFile=true
+```
+
+See [.NET RID Catalog](https://learn.microsoft.com/en-us/dotnet/core/rid-catalog) for all available platforms.
+사용 가능한 모든 플랫폼은 [.NET RID Catalog](https://learn.microsoft.com/en-us/dotnet/core/rid-catalog)를 참조하세요.
+
+## Configuration / 구성
 
 ### Process Update Interval / 프로세스 업데이트 간격
 

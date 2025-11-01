@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Helpers\robothelper.cs" />
     <Compile Remove="SubscriptionMessageSender.cs" />
   </ItemGroup>
 

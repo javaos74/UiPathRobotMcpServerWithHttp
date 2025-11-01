@@ -74,7 +74,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
             }
         }
 
-        public UiPathRobotToolHandler(int intervalseconds = 60*5) // default 5 minutes
+        public UiPathRobotToolHandler(int intervalseconds = 60 * 5) // default 5 minutes
         {
             Start(intervalseconds);
         }
@@ -94,7 +94,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                 // 락 외부에서 도구 목록 생성 (시간이 오래 걸리는 작업)
                 var processes = client.GetProcesses().Result;
                 var tools = new List<Tool>();
-                
+
                 foreach (var p in processes)
                 {
                     try
@@ -102,7 +102,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                         // 각 프로세스 처리에 타임아웃 적용
                         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                         var inputSchemaTask = Task.Run(() => Utils.GetInputParamv2(client, p.Key), cts.Token);
-                        
+
                         var inputSchema = inputSchemaTask.Result;
                         tools.Add(new Tool
                         {
@@ -122,7 +122,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                                 properties = new { },
                                 required = new string[0]
                             }));
-                        
+
                         tools.Add(new Tool
                         {
                             Name = p.Name,
@@ -131,7 +131,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                         });
                     }
                 }
-                
+
                 // 락 내부에서는 빠른 할당만 수행
                 _lock.EnterWriteLock();
                 try
@@ -142,9 +142,9 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                 {
                     _lock.ExitWriteLock();
                 }
-                
+
                 // 알림 전송 (락 외부에서)
-                if( _server != null)
+                if (_server != null)
                 {
                     try
                     {
@@ -183,35 +183,42 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
             }
         }
 
-        private async Task reportProgress( McpServer? server, string? progressToken, Task task)
+        private async Task reportProgress(McpServer? server, string? token, Task task)
         {
-            if (server == null || string.IsNullOrEmpty(progressToken))
+            if (server == null || string.IsNullOrEmpty(token))
                 return;
 
             int progress = 0;
             int total = 100;
-            
+#if DEBUG
+            Console.WriteLine($"report status : progressToken={token}");
+#endif
             try
             {
                 while (!task.IsCompleted)
                 {
-                    // MCP 0.4.0 progress notification 형식
-                    await server.SendNotificationAsync("notifications/progress", new
+                    var progressStatus = new
                     {
-                        progressToken = progressToken,
-                        progress = progress < 99 ? progress++ : 99,
-                        total = total
-                    });
+                        Progress = progress < 99 ? progress++ : 99,
+                        Total = total,
+                        progressToken = token
+                    };
+#if DEBUG
+                    Console.WriteLine( progressStatus.ToString());
+#endif
                     
+                    // MCP 0.4.0 progress notification 형식
+                    await server.SendNotificationAsync("notifications/progress", progressStatus);
+
                     await Task.Delay(2000); // 2초 간격으로 업데이트
                 }
-                
+
                 // 완료 시 100% 전송
                 await server.SendNotificationAsync("notifications/progress", new
                 {
-                    progressToken = progressToken,
-                    progress = 100,
-                    total = total
+                    Progress = 100,
+                    Total = total,
+                    progressToken = token 
                 });
             }
             catch (Exception ex)
@@ -223,6 +230,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
         public async ValueTask<CallToolResult> UiPathRobotToolCallHandler(CallToolRequestParams request, CancellationToken token)
         {
             var progressToken = request.Meta?["progressToken"]?.ToString();
+  
             var process = client.GetProcesses().Result.Where(p => p.Name == request.Name).FirstOrDefault();
             if (process == null)
             {
@@ -246,17 +254,17 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                         case JsonValueKind.Number:
                             Decimal dec;
                             long lng;
-                            if( v.TryGetInt64( out lng))
+                            if (v.TryGetInt64(out lng))
                                 job.InputArguments[k] = lng;
                             else if (v.TryGetDecimal(out dec))
                                 job.InputArguments[k] = dec;
                             break;
-    //                    case JsonValueKind.Object:
-    //                        job.InputArguments[k] = v.Deserialize( ;
-    //                        break;
-    //                    case JsonValueKind.Array:
-    //                        job.InputArguments[k] = v.ToObject<List<string>>();
-    //                        break;
+                        //case JsonValueKind.Object:
+                        //    job.InputArguments[k] = v.Deserialize(Dictionary<String,Object>);
+                        //    break;
+                        //                    case JsonValueKind.Array:
+                        //                        job.InputArguments[k] = v.ToObject<List<string>>();
+                        //                        break;
                         case JsonValueKind.True:
                             job.InputArguments[k] = true;
                             break;
@@ -269,21 +277,23 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
             try
             {
                 var jobTask = client.RunJob(job);
-                var progressTask = reportProgress(_server, progressToken, jobTask);   
+                var progressTask = reportProgress(_server, progressToken, jobTask);
                 Task.WaitAll(jobTask, progressTask); // Wait for both job and progress reporting to complete
 
-                var call_resp = new CallToolResult() {
+                var call_resp = new CallToolResult()
+                {
                     IsError = false,
                     Content = [new TextContentBlock { Text = $"Job finished successfully" }],
                 };
-                foreach( var k in jobTask.Result.Arguments.Keys)
+                foreach (var k in jobTask.Result.Arguments.Keys)
                 {
                     object? value = jobTask.Result.Arguments[k];
                     TypeCode code = Type.GetTypeCode(value?.GetType());
 
                     call_resp.Content.Add(new TextContentBlock { Text = $"{k}: {jobTask.Result.Arguments[k]}" });
 
-                };
+                }
+                ;
 #if DEBUG
                 //Console.WriteLine( $"{JsonSerializer.Serialize(jobTask.Result.Arguments)}");
                 //foreach( var k in jobTask.Result.Arguments.Keys)
@@ -293,7 +303,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
 #endif
                 return await ValueTask.FromResult(call_resp);
             }
-            catch (Exception e) 
+            catch (Exception e)
             {
                 Console.WriteLine(e.Message);
                 return await ValueTask.FromResult(new CallToolResult()
@@ -301,7 +311,7 @@ namespace UiPathRobotMcpServerOverHttp.Helpers
                     IsError = true,
                     Content = [new TextContentBlock { Text = e.Message }]
                 });
-            }            
+            }
         }
     }
 }
